@@ -6,6 +6,11 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
 use App\Profile;
+use App\ProfileHistory;
+use Carbon\Carbon;
+
+//エラーになったので、追加（1/13）
+use App\History;
 
 class ProfileController extends Controller
 {
@@ -30,16 +35,34 @@ class ProfileController extends Controller
       $profile->fill($form);
       $profile->save();
       
-      return redirect('admin/profile/');
+      return redirect('admin/profile/create');
     }
 
-    public function edit()
-    {
-        return view('admin.profile.edit');
+    public function edit(Request $request)
+      {
+      // News Modelからデータを取得する
+      $profile = Profile::find($request->id);
+      if (empty($profile)) {
+        abort(404);    
+      }
+         return view('admin/profile/edit', ['profile_form' => $profile]);
     }
 
     public function update()
     {
-        return redirect('admin/profile/edit');
+        $this->validate($request, Profile::$rules);
+        $profile = Profile::find($request->id);
+        $profile_form = $request->all();
+
+        unset($profile_form['_token']);
+      //unset($profile_form['remove']);　無効化に（1/13）
+        $profile->fill($profile_form)->save();
+
+        // 以下を追記
+        $profilehistory = new ProfileHistory();
+        $profilehistory->profile_id = $profile->id;
+        $profilehistory->edited_at = Carbon::now();
+        $profilehistory->save();
+        return redirect('admin/profile/');
     }
 }
